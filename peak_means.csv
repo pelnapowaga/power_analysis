@@ -1,0 +1,16 @@
+condition,feature,M,SD
+changing,harmonicity,-0.3,0.33
+changing,intensity,-0.55,0.59
+changing,location,-0.35,0.5
+changing,omission,-0.93,0.66
+changing,pitch,-0.36,0.47
+harmonic,harmonicity,-0.72,0.63
+harmonic,intensity,-0.73,0.45
+harmonic,location,-0.34,0.6
+harmonic,omission,-0.72,0.6
+harmonic,pitch,-0.58,0.59
+inharmonic,harmonicity,-0.4,0.37
+inharmonic,intensity,-0.6,0.34
+inharmonic,location,-0.44,0.51
+inharmonic,omission,-0.37,1.21
+inharmonic,pitch,-0.45,0.4
