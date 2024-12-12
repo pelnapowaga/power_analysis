@@ -1,5 +1,6 @@
 library(lme4)
-library(lmerTest)
+library(lmerTest) # not really needed here, can be removed at some point
+library(broom)
 
 # parameters
 params <- list(
@@ -54,16 +55,18 @@ make_ziutek <- function(sub_id, params) {
 }
 
 N <- 30
-ziutek_list <- lapply(1:N, make_ziutek, params)
+ziutek_list <- lapply(1:N, make_ziutek,)
 d <- do.call(rbind, ziutek_list)
 d
 
-# fit models
+# fit models - make sure they're correct
 m0 <- lmer(y ~ cond + (1|sub), data = d, REML = FALSE)
 m1 <- lmer(y ~ cond*feature + (1|sub), data = d, REML = FALSE)
-anova(m1)
 
 # perform likelihood ratio test
-anova(m0,m1) # tutaj się zatrzymałam
+t <- anova(m0,m1)
 
+# extract info from anova object
+# can use broom to get a tibble
+tidy(t)
 # now store output
