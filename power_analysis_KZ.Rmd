@@ -10,11 +10,11 @@ output:
 
 First, load the _lme4_ library and define a function to conduct power estimates.
 
-
 ```{r}
+
 library(lme4)
 
-pwr_calc_test <- function(b0, b1, b0_sd, res_sd, bf_0, bf_1, bf_0sd, fres_sd, nsims, ssizes) {
+pwr_calc_test <- function(nsims, ssizes) {
   # intialize data frame to store the output 
   pwr <- data.frame() 
   
@@ -27,53 +27,52 @@ pwr_calc_test <- function(b0, b1, b0_sd, res_sd, bf_0, bf_1, bf_0sd, fres_sd, ns
       ssize <- ssizes[s]
       
       # conditions factor
-      conds <- rep(c(0,1,2),ssize)
+      conds <- rep(c(0,1,2), each = 5, times =1)
       
       #feature factor
-      feature <- rep(c(0,1,2,3,4,5), ssize)
+      feature <- rep(c(1:5), times = 3)
+
+      make_ziutek <- function(sub_id, params) {
+        
+        # add intercept for condition
+        intercept_cond <- rep(rnorm(3,params$b0c, params$b0c_sd), each = 5)
+
+        # add feature intercept
+        intercept_feature <- rep(rnorm(5, params$b0f, params$b0f_sd), times=3)
+        
+        # add condition and feature effects
+        beta_cond <- params$b1_c * conds
+        beta_feature <- params$b1_f * feature
+        
+        # add interaction
+        beta_interaction <- params$b1_i * conds * feature
+        
+        # add residual noise
+        residuals <- rnorm(length(conds), 0, params$residuals_sd)
+
+        # collect in a dataframe and calculate simulated measured outcome (y)
+        d <- data.frame('cond' = as.character(conds), 
+                        'feature' = as.character(feature),
+                        'sub' = sub_id,
+                        'b0_c' = intercept_cond,
+                        'b0_f' = intercept_feature,
+                        'b1_c' = beta_cond,
+                        'b1_f' = beta_feature,
+                        'res' = residuals,
+                        'y' = intercept_cond + intercept_feature + beta_cond + beta_feature + beta_interaction + residuals)
+        }
       
-      # subject id's
-      subs <- rep(1:ssize, each = length(unique(conds)*unique(feature))) #???
+      ziutek_list <- lapply(1:ssize, make_ziutek, params)
+      d <- do.call(rbind, ziutek_list)
       
-      # add intercept for condition
-      intercept_cond <- rep(rnorm(ssize,b0,b0_sd), each = length(unique(conds)))
-      
-      # add condition effect
-      beta1_cond <- rep(b1,each= length(unique(conds)))*conds
-      
-      # add residual noise for condition
-      residuals_cond <- rnorm(length(subs),0,res_sd)
-      
-      # add intercept for feature
-      intercept_f <- rep(rnorm(ssize,bf_0,bf_0sd), each = length(unique(feature)))
-      
-      # add condition effect for feature
-      beta1_f <- rep(bf_1,each= length(unique(feature)))*feature
-      
-      # add residual noise for feature
-      residuals_f <- rnorm(length(subs),0,fres_sd)
-      
-      # collect in a dataframe and calculate simulated measured outcome (y)
-      d <- data.frame('cond' = as.character(conds), 
-                      'feature' = as.character(feature),
-                      'sub' = subs,
-                      'b0' = intercept_cond,
-                      'b1' = beta1_cond,
-                      'res' = residuals_cond,
-                      'b0_f' = intercept_f,
-                      'b1_f' = beta1_f,
-                      'res_f' = residuals_f,
-                      'y_cond' = intercept_cond + beta1_cond + residuals_cond,
-                      'y_f' = intercept_f + beta1_f + residuals_f + intercept_cond + beta1_cond + residuals_cond) #???
-      
-      # fit models
-      m0 <- lmer(y_cond ~ cond + (1|sub), data = d, REML = FALSE)
-      m1 <- lmer(y_f ~ cond*feature + (1|sub), data = d, REML = FALSE)
+      # fit models - make sure they're correct
+      m0 <- lmer(y ~ cond + (1|sub), data = d, REML = FALSE)
+      m1 <- lmer(y ~ cond*feature + (1|sub), data = d, REML = FALSE)
       
       # perform likelihood ratio test
-      test <- anova(m0,m1) # tutaj się zatrzymałam
-      
-      #store output of simulation
+      test <- anova(m0,m1)
+     
+       #store output of simulation
       pwr[idx,'sim'] <- n
       pwr[idx, 'ssize'] <- ssize
       pwr[idx, 'b0'] <- summary(m1)$coefficients[1]
@@ -85,122 +84,17 @@ pwr_calc_test <- function(b0, b1, b0_sd, res_sd, bf_0, bf_1, bf_0sd, fres_sd, ns
     }
   }
   return(pwr)
-}
+} 
 
 ```
-
-```{r}
-library(readr)
-library(tidyverse)
-peak_means <- read_csv("peak_means.csv")
-View(peak_means)
-
-#potrzebuję zamiast wartości przyjetych losować z wykresów o zadanej M i SD, ale czy to mają być reszty (tak)
-
-if (conds == "harmonic" & feature == "omition") { 
-  peak_means %>% 
-    filter(condition == "harmonic") %>% 
-    filter(feature == "omition") %>% 
-    select(M)
-}
-
-peak_means<-peak_means %>% 
-  mutate(whole_condition = paste(condition, feature))
-
-# Funkcja, która wybiera wartość liczbową na podstawie wybranego warunku
-wybierz_wartosc <- function(warunek, df) {
-  # Filtrowanie ramki danych po warunku
-  df_filtr <- df[df$condition == warunek, ]
-  
-  # Sprawdzamy, czy dla tego warunku są dane
-  if (nrow(df_filtr) > 0) {
-    # Losujemy jedną wartość z kolumny 'value' dla danego warunku
-    wylosowana_liczba <- sample(df_filtr$value, 1)
-    return(wylosowana_liczba)
-  }
-
-
-
-
-```
-
-```{r}
-
-
-
-ssize <- runif(1,10,30)
-      # conditions factor
-      conds <- rep(c("changing", "harmonic", "inharmonic"),ssize)
-      
-      #feature factor
-      feature <- rep(
-        function(warunek, df) {
-          df_filtr <- df[df$condition == warunek, ], ssize)
-      
-      # subject id's
-      subs <- rep(1:ssize, each = length(unique(conds)* unique(feature))) #???
-      
-      # add intercept for condition
-      intercept_cond <- rep(rnorm(ssize,e0,e0_sd), each = length(unique(conds)))
-      
-      # add condition effect
-      beta1_cond <- rep(e1,each= length(unique(conds)))*conds
-      
-      # add residual noise for condition
-      residuals_cond <- rnorm(length(subs), 0, eres_sd) #losowanie szumu (?)
-      
-      # add intercept for feature
-      intercept_f <- rep(rnorm(ssize,ef_0,ef_0sd), each = length(unique(feature)))
-      
-      # add condition effect for feature
-      beta1_f <- rep(ef_1,each= length(unique(feature)))*feature
-      
-      # add residual noise for feature
-      residuals_f <- rnorm(length(subs), sample(), efres_sd) #losowanie szumu (?)
-
-d <- data.frame('cond' = as.character(conds), 
-                      'feature' = as.character(feature),
-                      'sub' = subs,
-                      'b0' = intercept_cond,
-                      'b1' = beta1_cond,
-                      'res' = residuals_cond,
-                      'b0_f' = intercept_f,
-                      'b1_f' = beta1_f,
-                      'res_f' = residuals_f,
-                      'y_cond' = intercept_cond + beta1_cond + residuals_cond,
-                      'y_f' = intercept_f + beta1_f + residuals_f + intercept_cond + beta1_cond + residuals_cond)
-
-
-m0 <- lmer(y_cond ~ cond + (1|sub), data = d, REML = FALSE)
-m1 <- lmer(y_f ~ cond*feature + (1|sub), data = d, REML = FALSE)
-
-```
-
-```{r}
-
-summary(m0)
-summary(m1)
-plot(m0)
-plot(m1)
-test <- anova(m0,m1)
-summary(test)
-
-install.packages('sjPlot')
-library(sjPlot)
-
-tab_model(m0)
-```
-
-
-
 
 This function uses a mixed effects modelling to compare a null model in the form:
 
-` y ~ 1 + (1 | participant) `
+` y ~ harmonicity + (1 | participant) `
 
 to the model:
 
-` y ~ harmonicity + (1 | participant) `
+` y ~ harmonicity*feature + (1 | participant) `
 
 Where `y` is the dependent variable (EEG results), harmonicity is a fixed effect and participant is a random effect. Harmonicity is specified as a three-level factor (harmonic, inharmonic, inharmonic changing).
 
@@ -209,27 +103,30 @@ Now specify the parameters to simulate EEG data. Let's assume a minimum differen
 
 ```{r message=FALSE, warning=FALSE}
 
-e0 <- 3 # uV # uV # intercept (in fT or micro Volts)
-e1 <- -1 # -1 uv # uV # minimum difference between conditions
-e0_sd <- 0.95 # 0.95 uV # standard deviation of the intercept 
-eres_sd <- 1.5 # 1.5 uV # residual standard deviation
+# parameters
+params <- list(
+    b0c = 5,
+    b0c_sd = 1,
 
-ef_0 <-3
-ef_1 <- -1 
-ef_0sd <- 0.95
-efres_sd <- 1.5
+    b0f = 66,
+    b0f_sd = 5,
 
-nsims <- 1 # number of simulations per sample size
+    b1_c = 1,
+    b1_f = 3,
+    b1_i = 1,
+    residuals_sd = 1
+)
+
+nsims <- 10 # number of simulations per sample size
 ssizes <- 10:30 # sample sizes
 
 set.seed(777)
-pwr_test <- pwr_calc_test(e0, e1, e0_sd, eres_sd, ef_0, ef_1, ef_0sd, efres_sd, nsims, ssizes)
+pwr_test <- pwr_calc_test(nsims, ssizes)
 
-
-
-summary2 <- aggregate(pwr_test$p,by = list(pwr_test$ssize), FUN = function(x) sum(x < 0.05)/length(x))
+summary2 <- aggregate(pwr_test$p, by = list(pwr_test$ssize), FUN = function(x) sum(x < 0.05)/length(x))
 colnames(summary2) <- c('sample.size','power')
 print(summary2)
+
 
 ```
 
