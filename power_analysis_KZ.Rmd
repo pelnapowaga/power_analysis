@@ -117,8 +117,8 @@ params <- list(
     residuals_sd = 1
 )
 
-nsims <- 1000 # number of simulations per sample size
-ssizes <- c(5, 10, 20, 30) # sample sizes
+nsims <- 2000 # number of simulations per sample size
+ssizes <- c(15:30) # sample sizes
 
 set.seed(777)
 pwr_test <- pwr_calc_test(nsims, ssizes)
@@ -126,6 +126,18 @@ pwr_test <- pwr_calc_test(nsims, ssizes)
 summary2 <- aggregate(pwr_test$p, by = list(pwr_test$ssize), FUN = function(x) sum(x < 0.05)/length(x))
 colnames(summary2) <- c('sample.size','power')
 print(summary2)
+
+#I
+#nsims = 1000, ssizes = 5,10,20,30
+#30
+
+#II
+#nsims = 1000, ssizes = 15:30
+#24
+
+#III
+#nsims = 2000, ssizes = 15:30
+#25
 
 
 ```
