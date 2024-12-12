@@ -66,7 +66,7 @@ pwr_calc_test <- function(nsims, ssizes) {
       d <- do.call(rbind, ziutek_list)
       
       # fit models - make sure they're correct
-      m0 <- lmer(y ~ cond + (1|sub), data = d, REML = FALSE)
+      m0 <- lmer(y ~ cond+feature + (1|sub), data = d, REML = FALSE)
       m1 <- lmer(y ~ cond*feature + (1|sub), data = d, REML = FALSE)
       
       # perform likelihood ratio test
@@ -105,20 +105,20 @@ Now specify the parameters to simulate EEG data. Let's assume a minimum differen
 
 # parameters
 params <- list(
-    b0c = 5,
+    b0c = 1,
     b0c_sd = 1,
 
-    b0f = 66,
-    b0f_sd = 5,
+    b0f = 6,
+    b0f_sd = 1,
 
     b1_c = 1,
     b1_f = 3,
-    b1_i = 1,
+    b1_i = .3,
     residuals_sd = 1
 )
 
-nsims <- 10 # number of simulations per sample size
-ssizes <- 10:30 # sample sizes
+nsims <- 1000 # number of simulations per sample size
+ssizes <- c(5, 10, 20, 30) # sample sizes
 
 set.seed(777)
 pwr_test <- pwr_calc_test(nsims, ssizes)
